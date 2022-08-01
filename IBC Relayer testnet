@@ -1,0 +1,157 @@
+sudo apt update && sudo apt upgrade -y
+
+sudo apt install unzip -y
+
+RELAYER_NAME='NAMEDISCORD'
+
+CHAIN_ID_A='STRIDE-TESTNET-2'
+RPC_ADDR_A='127.0.0.1:16657'
+GRPC_ADDR_A='127.0.0.1:16090'
+ACCOUNT_PREFIX_A='stride'
+TRUSTING_PERIOD_A='8hours'
+DENOM_A='ustrd'
+MNEMONIC_A='parse addres'
+
+
+CHAIN_ID_B='GAIA'
+RPC_ADDR_B='127.0.0.1:23657'
+GRPC_ADDR_B='127.0.0.1:23090'
+ACCOUNT_PREFIX_B='cosmos'
+TRUSTING_PERIOD_B='8hours'
+DENOM_B='uatom'
+MNEMONIC_B='parse addres'
+
+mkdir $HOME/.hermes
+
+wget https://github.com/informalsystems/ibc-rs/releases/download/v1.0.0-rc.1/hermes-v1.0.0-rc.1-x86_64-unknown-linux-gnu.tar.gz
+mkdir -p $HOME/.hermes/bin
+tar -C $HOME/.hermes/bin/ -vxzf hermes-v1.0.0-rc.1-x86_64-unknown-linux-gnu.tar.gz
+echo 'export PATH="$HOME/.hermes/bin:$PATH"' >> $HOME/.bash_profile
+source $HOME/.bash_profile
+
+sudo tee $HOME/.hermes/config.toml > /dev/null <<EOF
+[global]
+log_level = 'info'
+
+[mode]
+
+[mode.clients]
+enabled = true
+refresh = true
+misbehaviour = true
+
+[mode.connections]
+enabled = false
+
+[mode.channels]
+enabled = false
+
+[mode.packets]
+enabled = true
+clear_interval = 100
+clear_on_start = true
+tx_confirmation = true
+
+[rest]
+enabled = true
+host = '127.0.0.1'
+port = 3000
+
+[telemetry]
+enabled = true
+host = '127.0.0.1'
+port = 3001
+
+[[chains]]
+### CHAIN_A ###
+id = '${CHAIN_ID_A}'
+rpc_addr = 'http://${RPC_ADDR_A}'
+grpc_addr = 'http://${GRPC_ADDR_A}'
+websocket_addr = 'ws://${RPC_ADDR_A}/websocket'
+rpc_timeout = '10s'
+account_prefix = '${ACCOUNT_PREFIX_A}'
+key_name = 'wallet'
+address_type = { derivation = 'cosmos' }
+store_prefix = 'ibc'
+default_gas = 100000
+max_gas = 2500000
+gas_price = { price = 0.0025, denom = '${DENOM_A}' }
+gas_multiplier = 1.1
+max_msg_num = 30
+max_tx_size = 2097152
+clock_drift = '5s'
+max_block_time = '30s'
+trusting_period = '${TRUSTING_PERIOD_A}'
+trust_threshold = { numerator = '1', denominator = '3' }
+memo_prefix = '${RELAYER_NAME}'
+[chains.packet_filter]
+policy = 'allow'
+list = [
+  ['ica*', '*'], # allow relaying on all channels whose port starts with ica
+  ['transfer', 'channel-0'],
+]
+
+[[chains]]
+### CHAIN_B ###
+id = '${CHAIN_ID_B}'
+rpc_addr = 'http://${RPC_ADDR_B}'
+grpc_addr = 'http://${GRPC_ADDR_B}'
+websocket_addr = 'ws://${RPC_ADDR_B}/websocket'
+rpc_timeout = '10s'
+account_prefix = '${ACCOUNT_PREFIX_B}'
+key_name = 'wallet'
+address_type = { derivation = 'cosmos' }
+store_prefix = 'ibc'
+default_gas = 100000
+max_gas = 2500000
+gas_price = { price = 0.0025, denom = '${DENOM_B}' }
+gas_multiplier = 1.1
+max_msg_num = 30
+max_tx_size = 2097152
+clock_drift = '5s'
+max_block_time = '30s'
+trusting_period = '${TRUSTING_PERIOD_B}'
+trust_threshold = { numerator = '1', denominator = '3' }
+memo_prefix = '${RELAYER_NAME}'
+[chains.packet_filter]
+policy = 'allow'
+list = [
+  ['ica*', '*'], # allow relaying on all channels whose port starts with ica
+  ['transfer', 'channel-0'],
+]
+EOF
+
+hermes health-check
+
+sudo tee $HOME/.hermes/${CHAIN_ID_A}.mnemonic > /dev/null <<EOF
+${MNEMONIC_A}
+EOF
+sudo tee $HOME/.hermes/${CHAIN_ID_B}.mnemonic > /dev/null <<EOF
+${MNEMONIC_B}
+EOF
+hermes keys add --chain ${CHAIN_ID_A} --mnemonic-file $HOME/.hermes/${CHAIN_ID_A}.mnemonic
+hermes keys add --chain ${CHAIN_ID_B} --mnemonic-file $HOME/.hermes/${CHAIN_ID_B}.mnemonic
+
+sudo tee /etc/systemd/system/hermesd.service > /dev/null <<EOF
+[Unit]
+Description=hermes
+After=network-online.target
+
+[Service]
+User=$USER
+ExecStart=$(which hermes) start
+Restart=on-failure
+RestartSec=3
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+sudo systemctl daemon-reload
+sudo systemctl enable hermesd
+sudo systemctl restart hermesd
+
+
+journalctl -u hermesd -f -o cat
