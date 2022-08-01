@@ -15,7 +15,7 @@ sudo apt install unzip -y
 ## Set up variables
 All settings below are just example for IBC Relayer between stride `STRIDE-TESTNET-2` and juno `GAIA` testnets. Please fill with your own values.
 ```
-RELAYER_NAME='kjnodes#8455' # add your Discord username here
+RELAYER_NAME='Namex#7338' # add your Discord username here
 ```
 
 ### Chain A
@@ -26,7 +26,7 @@ GRPC_ADDR_A='127.0.0.1:16090'
 ACCOUNT_PREFIX_A='stride'
 TRUSTING_PERIOD_A='8hours'
 DENOM_A='ustrd'
-MNEMONIC_A='speed rival market sure decade call silly flush derive story state menu inflict catalog habit swallow anxiety lumber siege fuel engage kite dad harsh'
+MNEMONIC_A='parse addres'
 ```
 
 ### Chain B
@@ -37,7 +37,7 @@ GRPC_ADDR_B='127.0.0.1:23090'
 ACCOUNT_PREFIX_B='cosmos'
 TRUSTING_PERIOD_B='8hours'
 DENOM_B='uatom'
-MNEMONIC_B='speed rival market sure decade call silly flush derive story state menu inflict catalog habit swallow anxiety lumber siege fuel engage kite dad harsh'
+MNEMONIC_B='parse addres'
 ```
 
 ## Make hermes home dir
